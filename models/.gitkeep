@@ -1,0 +1,1 @@
+Placeholder: models/ — Ollama model storage on D:. Contents are git-ignored by design (model weights never belong in git). Keep this .gitkeep.
