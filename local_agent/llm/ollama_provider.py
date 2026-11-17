@@ -11,12 +11,16 @@
 #
 # All provider-specific details (HTTP, JSON keys, streaming protocol) live
 # HERE and nowhere else — that is what keeps the provider replaceable.
+#
+# Design note: all HTTP goes through self._client (an httpx.Client). Tests
+# swap that client's transport with MockTransport; production uses the
+# default real transport. This is the one intentional patch point.
 # ==============================================================================
 
 from __future__ import annotations
 
 import json
-from typing import Iterator, List, Sequence
+from typing import Iterator, List, Optional, Sequence
 
 import httpx
 
@@ -37,6 +41,10 @@ class OllamaProvider(LLMProvider):
     # Short timeout for the cheap health/availability calls (service down = fast fail)
     HEALTH_TIMEOUT_SECONDS: float = 5.0
 
+    def __init__(self, config: ProviderConfig) -> None:
+        super().__init__(config)
+        self._client = httpx.Client(timeout=config.timeout_seconds)
+
     # ------------------------------------------------------------------ helpers
     def _messages_payload(self, messages: Sequence[ChatMessage]) -> List[dict]:
         """Convert ChatMessage objects to Ollama's expected JSON shape."""
@@ -51,11 +59,14 @@ class OllamaProvider(LLMProvider):
             f"Detail: {exc}"
         )
 
+    def close(self) -> None:
+        self._client.close()
+
     # ------------------------------------------------------------------ availability
     def is_available(self) -> bool:
         """True iff the service responds AND the configured model is installed."""
         try:
-            resp = httpx.get(
+            resp = self._client.get(
                 f"{self.config.host}/api/tags",
                 timeout=self.HEALTH_TIMEOUT_SECONDS,
             )
@@ -83,7 +94,7 @@ class OllamaProvider(LLMProvider):
             "stream": False,
         }
         try:
-            resp = httpx.post(
+            resp = self._client.post(
                 f"{self.config.host}/api/chat",
                 json=payload,
                 timeout=self.config.timeout_seconds,
@@ -131,7 +142,7 @@ class OllamaProvider(LLMProvider):
             "stream": True,
         }
         try:
-            with httpx.stream(
+            with self._client.stream(
                 "POST",
                 f"{self.config.host}/api/chat",
                 json=payload,
