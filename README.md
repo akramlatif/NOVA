@@ -4,7 +4,7 @@ NOVA is a **local-first** personal AI assistant for Windows 11 that understands
 natural-language instructions and performs real-world tasks on your computer
 and through a web interface — with explicit permissions and security from day one.
 
-> **Status: Phase 1 — Environment & Project Foundation.**
+> **Status: Phase 2 — Local AI Brain.**
 > NOVA is built phase by phase. Nothing is marked done until it is tested and approved.
 
 ## What NOVA is being built to do (eventually)
@@ -37,7 +37,7 @@ tested, and approved.
 | Backend | FastAPI | Phase 7 |
 | Frontend | React | Phase 8 |
 | Desktop shell | Tauri | Phase 8 |
-| Database | SQLite | Phase 4 (memory system) |
+| Database | SQLite | Phase 2 (conversations), Phase 4 (memory) |
 
 ## Project structure
 
@@ -55,10 +55,6 @@ D:\NOVA\
 └── logs\           # Runtime + audit logs   (contents git-ignored)
 ```
 
-Directories whose real code arrives in later phases contain only a `.gitkeep`
-placeholder so the layout exists from day one. **No empty modules pretending
-to be functionality.**
-
 ## Quick start (Windows 11)
 
 Full guide with every command explained: **[docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md)**
@@ -73,7 +69,23 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 pytest                                   # run the test suite
 python scripts\verify_environment.py    # inspect your machine
+python scripts\verify_ai_brain.py       # Phase 2: live AI brain check (needs Ollama)
 ```
+
+## The local AI brain (Phase 2)
+
+```python
+from local_agent import NovaEngine
+from local_agent.config import load_config
+
+cfg = load_config()
+engine = NovaEngine(config=cfg.llm, data_dir=cfg.data_dir, compact_prompt=True)
+conv = engine.store.new_conversation()
+response = engine.chat(conv, "What's on my agenda?")
+# response: NovaResponse (Pydantic-validated, 7 fields, safety-checked)
+```
+
+Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 
 ## Security principles (active from Phase 1)
 
@@ -85,13 +97,14 @@ python scripts\verify_environment.py    # inspect your machine
 - The control service binds to localhost only — never exposed to the internet.
 - Every security-relevant action goes to an audit log.
 - No API keys or passwords are ever hardcoded or committed.
+- **Model output is data, never instructions** — the AI brain cannot execute anything.
 
 ## Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Environment setup, project foundation, verification tooling | **In progress** |
-| 2 | Ollama LLM core, local conversation loop | Planned |
+| 1 | Environment setup, project foundation, verification tooling | **Pushed — awaiting local verification** |
+| 2 | Ollama LLM core, local conversation loop, structured responses | **Pushed — awaiting local verification** |
 | 3 | Task planner (language → structured steps) | Planned |
 | 4 | Safe tools: files (approved dirs), web search, terminal allowlist | Planned |
 | 5 | Browser automation (untrusted content) | Planned |
