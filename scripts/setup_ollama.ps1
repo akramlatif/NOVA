@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # NOVA — Ollama setup helper (Phase 1, Task 3)
 # ------------------------------------------------------------------------------
 # Purpose:
@@ -18,13 +18,17 @@
 # ==============================================================================
 
 param(
-    [switch]$SkipInstall   # set to only configure/verify, never install
+    [switch]$SkipInstall,   # set to only configure/verify, never install
+    [string]$ModelsDir = "$PSScriptRoot\..\models"
 )
 
 $ErrorActionPreference = "Stop"
 
 # ------------------------------------------------------------------ config
-$ModelsDir = "D:\NOVA\models"
+$ModelsDir = (Resolve-Path -Path $ModelsDir -ErrorAction SilentlyContinue)
+if (-not $ModelsDir) {
+    $ModelsDir = [System.IO.Path]::GetFullPath("$PSScriptRoot\..\models")
+}
 $MinFreeDiskGB = 10
 $MinRamGB = 6
 
@@ -107,17 +111,19 @@ Write-Step "Step 4/4: Checking RAM and storage before recommending a model..."
 $os = Get-CimInstance Win32_OperatingSystem
 $totalRamGB = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
 $freeRamGB  = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
-$freeDiskGB = [math]::Round((Get-PSDrive D).Free / 1GB, 1)
+$modelsDrive = (Get-Item (Split-Path $ModelsDir -Parent)).PSDrive.Name
+if (-not $modelsDrive) { $modelsDrive = (Get-Item $ModelsDir).PSDrive.Name }
+$freeDiskGB = [math]::Round((Get-PSDrive $modelsDrive).Free / 1GB, 1)
 
 Write-Host "        RAM:   ${freeRamGB} GB free of ${totalRamGB} GB"
-Write-Host "        D: free: ${freeDiskGB} GB"
+Write-Host "        $($modelsDrive): free: ${freeDiskGB} GB (model storage drive)"
 
 if ($totalRamGB -lt $MinRamGB) {
     Write-Fail "Only ${totalRamGB} GB total RAM — running a local model alongside Windows 11 is unsafe. Aborting; consider a cloud API instead."
     exit 1
 }
 if ($freeDiskGB -lt $MinFreeDiskGB) {
-    Write-Fail "Only ${freeDiskGB} GB free on D: — not enough for models plus growth. Free space first."
+    Write-Fail "Only ${freeDiskGB} GB free on ${modelsDrive}: — not enough for models plus growth. Free space first."
     exit 1
 }
 

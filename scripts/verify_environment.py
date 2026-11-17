@@ -170,27 +170,41 @@ def check_ram() -> bool:
 
 
 def check_d_drive() -> bool:
-    print("D: drive free space:")
+    print("Storage (Project Drive & D: drive):")
+    import pathlib
     try:
         import ctypes.wintypes as wt
-        free = ctypes.c_ulonglong()
-        total = ctypes.c_ulonglong()
-        _ = wt  # wintypes import confirms we're on Windows with proper ctypes
-        if not ctypes.windll.kernel32.GetDiskFreeSpaceExW(
-            "D:\\", None, ctypes.byref(total), ctypes.byref(free)
+        _ = wt
+        project_drive = pathlib.Path(__file__).resolve().parents[1].drive + "\\"
+        free_proj = ctypes.c_ulonglong()
+        total_proj = ctypes.c_ulonglong()
+        ctypes.windll.kernel32.GetDiskFreeSpaceExW(
+            project_drive, None, ctypes.byref(total_proj), ctypes.byref(free_proj)
+        )
+        proj_free_gb = free_proj.value / (1024 ** 3)
+        print(f"         Project drive ({project_drive}) free space: {proj_free_gb:.1f} GB")
+
+        free_d = ctypes.c_ulonglong()
+        total_d = ctypes.c_ulonglong()
+        if ctypes.windll.kernel32.GetDiskFreeSpaceExW(
+            "D:\\", None, ctypes.byref(total_d), ctypes.byref(free_d)
         ):
-            raise OSError("GetDiskFreeSpaceExW failed")
+            d_free_gb = free_d.value / (1024 ** 3)
+            print(f"         D: free space: {d_free_gb:.1f} GB")
+            if d_free_gb < MIN_DISK_FREE_GB:
+                _warn(
+                    f"Only {d_free_gb:.1f} GB free on D: (< {MIN_DISK_FREE_GB:.0f} GB). "
+                    f"Using project drive {project_drive} ({proj_free_gb:.1f} GB free) for models and data."
+                )
     except OSError as e:
-        _warn(f"Could not query D: ({e}). Ensure D:\\NOVA is on a real drive.")
+        _warn(f"Could not query disk space ({e}). Ensure project drive is accessible.")
         return True
-    free_gb = free.value / (1024 ** 3)
-    print(f"         D: free space: {free_gb:.1f} GB")
-    if free_gb >= MIN_DISK_FREE_GB:
-        _ok(f"{free_gb:.1f} GB free on D: — enough for {RECOMMENDED_MODEL} "
+
+    if proj_free_gb >= MIN_DISK_FREE_GB:
+        _ok(f"{proj_free_gb:.1f} GB free on {project_drive} — ample room for {RECOMMENDED_MODEL} "
             f"and future data/logs.")
         return True
-    _fail(f"Only {free_gb:.1f} GB free on D: — below the {MIN_DISK_FREE_GB:.0f} GB "
-          f"minimum for models + growth.")
+    _fail(f"Only {proj_free_gb:.1f} GB free on {project_drive} — below {MIN_DISK_FREE_GB:.0f} GB minimum.")
     return False
 
 
