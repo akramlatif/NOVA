@@ -1,0 +1,40 @@
+# ---- NOVA .gitignore ----
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Environment & secrets — NEVER commit real credentials
+.env
+.env.local
+*.key
+
+# Node (frontend & desktop, later phases)
+node_modules/
+dist/
+build/
+
+# Rust / Tauri (later phases)
+target/
+
+# Runtime data — model weights, databases, logs stay local by design
+data/
+logs/
+models/
+uploads/
+*.db
+*.sqlite3
+
+# IDEs & OS
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
