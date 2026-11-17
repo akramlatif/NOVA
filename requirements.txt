@@ -1,10 +1,10 @@
 # ==============================================================================
-# NOVA — Python dependencies (Phase 1)
+# NOVA — Python dependencies
 # ------------------------------------------------------------------------------
 # Philosophy: lightweight first. NOVA targets an i5-5200U / 8 GB RAM / HDD
-# machine, so every dependency here is small, pure-Python where possible,
-# and earns its place. Heavy AI inference is delegated to Ollama, which runs
-# as its own process — that is why there is no torch/transformers here.
+# machine, so every dependency is small and earns its place. Heavy AI
+# inference is delegated to Ollama, which runs as its own process — that is
+# why there is no torch/transformers here.
 #
 # Install:   pip install -r requirements.txt
 # ==============================================================================
@@ -13,17 +13,18 @@
 # Environment variable loading (.env files). ~0.1 MB.
 python-dotenv==1.0.1
 
-# HTTP requests — used from Phase 2 to talk to the local Ollama server.
-# Chosen over 'requests' because it is the direct path to async support
-# which FastAPI (Phase 7) will need. ~0.5 MB.
+# HTTP client — talks to the local Ollama server (Phase 2) and later to
+# anything HTTP-based. Async-capable for FastAPI in Phase 7. ~0.5 MB.
 httpx==0.27.2
+
+# Data validation — the structured NovaResponse contract (Phase 2). ~1 MB.
+pydantic==2.9.2
 
 # ---- Development & testing -----------------------------------------------------
 # Test framework. ~0.2 MB plus plugins.
 pytest==8.3.3
 
 # ---- Not yet included (added in the phase that needs them) --------------------
-# Phase 2 : none beyond httpx (Ollama is HTTP-based)
 # Phase 4 : SQLite is in the Python standard library — zero extra weight
 # Phase 7 : fastapi + uvicorn[standard]
 # Phase 8 : frontend/desktop live in their own package.json manifests
