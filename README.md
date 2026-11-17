@@ -1,3 +1,106 @@
+# NOVA — Personal AI Computer Assistant
+
+NOVA is a **local-first** personal AI assistant for Windows 11 that understands
+natural-language instructions and performs real-world tasks on your computer
+and through a web interface — with explicit permissions and security from day one.
+
+> **Status: Phase 2 — Local AI Brain.**
+> NOVA is built phase by phase. Nothing is marked done until it is tested and approved.
+
+## What NOVA is being built to do (eventually)
+
+Understand natural-language instructions · plan multi-step tasks · open and
+navigate websites · search online · download and organize files · control
+approved Windows applications · use mouse/keyboard when needed · read and
+create documents · run approved terminal commands · remember preferences ·
+communicate through text and voice · operate through desktop and web interfaces.
+
+**One capability at a time.** Nothing ships until the previous layer is built,
+tested, and approved.
+
+## Hardware target & design consequences
+
+| Item | Value | Consequence for design |
+|---|---|---|
+| CPU | Intel Core i5-5200U (2 cores / 4 threads) | Small models; reliability over speed |
+| RAM | 8 GB | 3B-parameter quantized models maximum |
+| Storage | HDD, project on D: | Models and data live on `D:\NOVA`; first loads are slow |
+| GPU | Not assumed | CPU-only quantized inference (Ollama) |
+| OS | Windows 11 | Desktop automation will use Windows APIs |
+
+## Technology stack (planned)
+
+| Layer | Technology | Status |
+|---|---|---|
+| AI runtime | Ollama | Phase 1–2 |
+| Core language | Python 3.10+ | Phase 1 |
+| Backend | FastAPI | Phase 7 |
+| Frontend | React | Phase 8 |
+| Desktop shell | Tauri | Phase 8 |
+| Database | SQLite | Phase 2 (conversations), Phase 4 (memory) |
+
+## Project structure
+
+```
+D:\NOVA\
+├── backend\        # FastAPI service                    (Phase 7)
+├── frontend\       # React web UI                      (Phase 8)
+├── desktop\        # Tauri desktop shell                (Phase 8)
+├── local_agent\    # NOVA's brain: LLM, planner, tools  (Phases 2-6)
+├── docs\           # Setup and architecture guides
+├── scripts\        # Developer helper scripts
+├── tests\          # Pytest test suite
+├── models\         # Ollama model storage   (contents git-ignored)
+├── data\           # SQLite DBs, user data  (contents git-ignored)
+└── logs\           # Runtime + audit logs   (contents git-ignored)
+```
+
+## Quick start (Windows 11)
+
+Full guide with every command explained: **[docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md)**
+
+```powershell
+cd D:\
+git clone https://github.com/akramlatif/NOVA.git
+cd NOVA
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pytest                                   # run the test suite
+python scripts\verify_environment.py    # inspect your machine
+python scripts\verify_ai_brain.py       # Phase 2: live AI brain check (needs Ollama)
+```
+
+## The local AI brain (Phase 2)
+
+```python
+from local_agent import NovaEngine
+from local_agent.config import load_config
+
+cfg = load_config()
+engine = NovaEngine(config=cfg.llm, data_dir=cfg.data_dir, compact_prompt=True)
+conv = engine.store.new_conversation()
+response = engine.chat(conv, "What's on my agenda?")
+# response: NovaResponse (Pydantic-validated, 7 fields, safety-checked)
+```
+
+Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
+
+## Security principles (active from Phase 1)
+
+- Explicit permissions for every capability — nothing runs "by default."
+- Filesystem access restricted to approved directories only.
+- Command allowlists; confirmation required before destructive actions.
+- Website content and downloaded files are always treated as untrusted.
+- Website content can never override system security rules.
+- The control service binds to localhost only — never exposed to the internet.
+- Every security-relevant action goes to an audit log.
+- No API keys or passwords are ever hardcoded or committed.
+- **Model output is data, never instructions** — the AI brain cannot execute anything.
+
+## Roadmap
+
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Environment setup, project foundation, verification tooling | **Pushed — awaiting local verification** |
@@ -8,3 +111,7 @@
 | 6 | Desktop automation (mouse/keyboard, approved apps) | Planned |
 | 7 | FastAPI backend (localhost-only) | Planned |
 | 8 | React frontend + Tauri desktop shell | Planned |
+
+## License
+
+Private, personal project of @akramlatif. Not for redistribution.
