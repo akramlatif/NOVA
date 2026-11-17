@@ -32,7 +32,7 @@ from local_agent.llm.provider import (
     LLMProvider,
     ProviderConfig,
 )
-from local_agent.schemas import ConversationFallback, NovaResponse, ResponseType
+from local_agent.schemas import NovaResponse, ResponseType
 
 logger = logging.getLogger("nova.engine")
 
@@ -52,9 +52,7 @@ class ResponseParser:
     @classmethod
     def parse(cls, raw_text: str, user_message: str) -> NovaResponse:
         """Parse + validate. Raises ValueError on unusable output."""
-        candidates = cls._extract_candidates(raw_text)
-
-        for candidate in candidates:
+        for candidate in cls._extract_candidates(raw_text):
             try:
                 data = json.loads(candidate)
             except json.JSONDecodeError:
@@ -87,6 +85,12 @@ class ResponseParser:
 # ============================================================================== engine
 class NovaEngine:
     """NOVA's brain. Owns the provider, the store, and the safety pipeline."""
+
+    ACTION_VERBS: frozenset[str] = frozenset({
+        "open", "create", "delete", "move", "copy", "download", "run",
+        "search", "find", "send", "write", "make", "install", "rename",
+        "close", "start", "stop", "organize", "sort", "save", "set",
+    })
 
     def __init__(
         self,
@@ -144,7 +148,7 @@ class NovaEngine:
             response = ResponseParser.parse(raw, user_message)
         except ValueError as e:
             logger.warning("Structured parse failed, falling back: %s", e)
-            response = self._fallback_response(user_message, raw)
+            response = self._fallback_response(user_message)
 
         # 4. Persist the exchange
         self.store.append_message(conversation_id, message)
@@ -179,37 +183,25 @@ class NovaEngine:
         )
 
     # ------------------------------------------------------------------ fallback
-    def _fallback_response(self, user_message: str, raw_text: str) -> NovaResponse:
-        """When structured parsing fails: present the raw text as plain
-        conversation with NO executable content. Failing safe."""
-        # If the raw text still smells like an action request, ask the user
-        # to rephrase rather than misclassifying it as chat.
-        cleaned = raw_text.strip()[:2000]
-        fb = ConversationFallback(user_message=user_message)
+    def _fallback_response(self, user_message: str) -> NovaResponse:
+        """When structured parsing fails: return a NON-executable response.
+
+        Failing safe: if the user's message looked like an action request we
+        ask for clarification (so the user knows the plan was NOT captured),
+        otherwise treat it as plain conversation. Never fabricate a plan.
+        """
+        if self._looks_like_action(user_message):
+            return NovaResponse(
+                response_type=ResponseType.CLARIFICATION_NEEDED,
+                user_message=user_message,
+            )
         return NovaResponse(
             response_type=ResponseType.CONVERSATION,
             user_message=user_message,
-            detected_intent=fb.detected_intent,
-            requested_action=None,
-            required_tools=[],
-            execution_plan=[],
-            requires_confirmation=False,
-        ) if not self._looks_like_action(user_message) else NovaResponse(
-            response_type=ResponseType.CLARIFICATION_NEEDED,
-            user_message=user_message,
-            requested_action=None,
-            required_tools=[],
-            execution_plan=[],
-            requires_confirmation=False,
         )
 
-    @staticmethod
-    def _looks_like_action(text: str) -> bool:
+    @classmethod
+    def _looks_like_action(cls, text: str) -> bool:
         """Cheap heuristic: imperative verbs at the start suggest an action."""
-        action_verbs = (
-            "open", "create", "delete", "move", "copy", "download", "run",
-            "search", "find", "send", "write", "make", "install", "rename",
-            "close", "start", "stop", "organize", "sort", "save", "set",
-        )
         first = text.strip().split(" ", 1)[0].lower().strip(".,!?")
-        return first in action_verts
+        return first in cls.ACTION_VERBS
