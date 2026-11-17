@@ -32,6 +32,7 @@ VALID_TRANSITIONS: Dict[TaskStatus, frozenset] = {
     TaskStatus.PENDING: frozenset({TaskStatus.PLANNING, TaskStatus.CANCELLED}),
     TaskStatus.PLANNING: frozenset({
         TaskStatus.PENDING,  # planning failed -> replanable
+        TaskStatus.RUNNING,  # plan approved or safe -> execute
         TaskStatus.WAITING_FOR_APPROVAL,
         TaskStatus.CANCELLED,
     }),
@@ -82,7 +83,7 @@ class TaskPlan(BaseModel):
     user_request: str
     intent_summary: str = Field(..., description="What the user wants, plainly")
     expected_result: str = Field(..., description="Success state, plainly")
-    steps: List[PlanStep] = Field(..., min_length=1)
+    steps: List[PlanStep] = Field(default_factory=list)
     requires_approval: bool = Field(
         ..., description="True if ANY step is permission-gated"
     )

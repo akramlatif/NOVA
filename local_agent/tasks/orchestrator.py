@@ -70,6 +70,7 @@ class Orchestrator:
         self._plans: Dict[str, TaskPlan] = {}
         self._statuses: Dict[str, TaskStatus] = {}
         self._results: Dict[str, List[StepResult]] = {}
+        self._approved_tasks: Set[str] = set()
 
     # ================================================================= state machine
     def _set_status(self, task_id: str, new: TaskStatus) -> None:
@@ -127,6 +128,12 @@ class Orchestrator:
         if task_id not in self._statuses:
             raise KeyError(f"Unknown task: {task_id}")
 
+        if self.status(task_id) == TaskStatus.CANCELLED:
+            return self._task_result(
+                task_id, TaskStatus.CANCELLED,
+                summary="Task was cancelled before execution.",
+            )
+
         cancel_event = threading.Event()
         self._cancel_events[task_id] = cancel_event
 
@@ -138,7 +145,7 @@ class Orchestrator:
                 #  the audit trail honest about the lifecycle)
 
             # ---- approval gate: plan contains a sensitive step
-            if plan.requires_approval and self.status(task_id) != TaskStatus.RUNNING:
+            if plan.requires_approval and task_id not in self._approved_tasks and self.status(task_id) != TaskStatus.RUNNING:
                 self._set_status(task_id, TaskStatus.WAITING_FOR_APPROVAL)
                 if self._approver is None:
                     # Fail-safe: no approver wired -> stop here, let the caller
@@ -148,12 +155,13 @@ class Orchestrator:
                         summary="Task is waiting for user approval before it can "
                                 "run sensitive steps.",
                     )
-                if not self._approver(plan, step_id=0):
+                if not self._approver(plan, 0):
                     self._set_status(task_id, TaskStatus.CANCELLED)
                     return self._task_result(
                         task_id, TaskStatus.CANCELLED,
                         summary="User declined approval. Task cancelled.",
                     )
+                self._approved_tasks.add(task_id)
                 self._set_status(task_id, TaskStatus.RUNNING)
 
             # ---- already approved and resuming: fall through to RUNNING
@@ -179,9 +187,9 @@ class Orchestrator:
 
                 # per-step approval gate (sensitive tool at ANY step)
                 spec = self.registry.get(step.tool_name)
-                if spec.permission_level >= PermissionLevel.SENSITIVE:
+                if spec.permission_level >= PermissionLevel.SENSITIVE and task_id not in self._approved_tasks:
                     if self._approver is not None:
-                        if not self._approver(plan, step_id=step.step_id):
+                        if not self._approver(plan, step.step_id):
                             self._set_status(task_id, TaskStatus.CANCELLED)
                             return self._task_result(
                                 task_id, TaskStatus.CANCELLED,
@@ -340,7 +348,8 @@ class Orchestrator:
                 f"Task {task_id} is not waiting for approval "
                 f"(state: {self.status(task_id).value})"
             )
-        self._statuses[task_id] = TaskStatus.PENDING  # internal reset; run() re-drives
+        self._approved_tasks.add(task_id)
+        self._set_status(task_id, TaskStatus.RUNNING)
         return self.run(task_id)
 
     # ================================================================= result assembly

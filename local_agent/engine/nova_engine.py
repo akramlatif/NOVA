@@ -59,7 +59,7 @@ class ResponseParser:
                 continue
             if not isinstance(data, dict):
                 continue
-            data.setdefault("user_message", user_message)
+            data["user_message"] = user_message
             try:
                 return NovaResponse.model_validate(data)
             except Exception:  # pydantic ValidationError — try next candidate

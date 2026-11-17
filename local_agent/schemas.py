@@ -82,7 +82,7 @@ class NovaResponse(BaseModel):
     def _message_not_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("user_message must not be empty")
-        return v.strip()
+        return v
 
     @field_validator("execution_plan")
     @classmethod
