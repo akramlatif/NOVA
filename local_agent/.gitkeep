@@ -1,0 +1,9 @@
+Placeholder: local_agent/ — NOVA's brain arrives in Phases 2-6:
+- llm/         (Phase 2: Ollama integration, conversation loop)
+- planner/     (Phase 3: natural language -> structured steps)
+- orchestrator/(Phase 3: executes plans step by step)
+- memory/      (Phase 4: SQLite preferences store)
+- security/    (Phase 4: permissions, audit log)
+- tools/       (Phases 4-6: files, web, terminal, browser, desktop)
+
+This directory is intentionally empty (no fake modules). Keep this .gitkeep.
