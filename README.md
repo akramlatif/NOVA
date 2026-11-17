@@ -103,8 +103,8 @@ Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Environment setup, project foundation, verification tooling | **Pushed — awaiting local verification** |
-| 2 | Ollama LLM core, local conversation loop, structured responses | **Pushed — awaiting local verification** |
+| 1 | Environment setup, project foundation, verification tooling | **Approved** ✅ |
+| 2 | Ollama LLM core, local conversation loop, structured responses | **Approved** ✅ |
 | 3 | Task planner (language → structured steps) | Planned |
 | 4 | Safe tools: files (approved dirs), web search, terminal allowlist | Planned |
 | 5 | Browser automation (untrusted content) | Planned |
