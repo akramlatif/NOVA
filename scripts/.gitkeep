@@ -1,0 +1,1 @@
+Placeholder: scripts/ holds developer helpers: verify_environment.py and setup_ollama.ps1 (Phase 1). Keep this .gitkeep only if the directory would otherwise be empty.
