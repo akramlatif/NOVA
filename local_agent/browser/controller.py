@@ -75,7 +75,9 @@ class BrowserController:
             assert self._active_page is not None
             return action(self._active_page)
 
-        timeout = timeout_seconds or (self.default_timeout_ms / 1000.0 + 10.0)
+        # Allow extra headroom for cold-starting browser processes on HDD / low-power hardware
+        cold_start_buffer = 30.0 if not (self._browser and self._browser.is_connected()) else 10.0
+        timeout = timeout_seconds or (self.default_timeout_ms / 1000.0 + cold_start_buffer)
         try:
             future = self._executor.submit(_runner)
             return future.result(timeout=timeout)
@@ -129,7 +131,7 @@ class BrowserController:
         """Explicitly initialize the browser on its dedicated worker thread."""
         def _start():
             self._ensure_started()
-        self._executor.submit(_start).result(timeout=self.default_timeout_ms / 1000.0 + 10.0)
+        self._executor.submit(_start).result(timeout=self.default_timeout_ms / 1000.0 + 30.0)
 
     def stop(self) -> None:
         """Close browser processes and contexts on the dedicated thread."""
