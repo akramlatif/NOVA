@@ -105,8 +105,8 @@ Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 |---|---|---|
 | 1 | Environment setup, project foundation, verification tooling | **Approved** ✅ |
 | 2 | Ollama LLM core, local conversation loop, structured responses | **Approved** ✅ |
-| 3 | Task planner (language → structured steps) | Planned |
-| 4 | Safe tools: files (approved dirs), web search, terminal allowlist | Planned |
+| 3 | Task planner, tool registry, and execution orchestrator | **Approved** ✅ |
+| 4 | Safe core tools: filesystem sandbox, web search, terminal allowlist | **Implemented & Tested** 🟢 |
 | 5 | Browser automation (untrusted content) | Planned |
 | 6 | Desktop automation (mouse/keyboard, approved apps) | Planned |
 | 7 | FastAPI backend (localhost-only) | Planned |

@@ -84,6 +84,9 @@ class ToolRegistry:
     def has(self, name: str) -> bool:
         return name in self._tools
 
+    def __contains__(self, name: str) -> bool:
+        return name in self._tools
+
     def names(self) -> List[str]:
         return sorted(self._tools)
 
