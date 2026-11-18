@@ -22,7 +22,10 @@ import json
 import logging
 import re
 import uuid
-from typing import Optional, Sequence
+from typing import Optional, Sequence, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from local_agent.memory.manager import MemoryManager
 
 from local_agent.llm.provider import ChatMessage, LLMProvider
 from local_agent.tasks.registry import PermissionLevel, ToolRegistry
@@ -63,17 +66,31 @@ User request: {request}"""
 class TaskPlanner:
     """Natural language -> validated TaskPlan. Provider-injected (replaceable)."""
 
-    def __init__(self, provider: LLMProvider, registry: ToolRegistry) -> None:
+    def __init__(
+        self,
+        provider: LLMProvider,
+        registry: ToolRegistry,
+        memory_manager: Optional[MemoryManager] = None,
+    ) -> None:
         self.provider = provider
         self.registry = registry
+        self.memory_manager = memory_manager
 
     # ------------------------------------------------------------------ main entry
     def plan(self, user_request: str) -> TaskPlan:
         """Produce a validated plan or raise PlanValidationError."""
+        mem_context = ""
+        if self.memory_manager and self.memory_manager.enabled:
+            mem_context = self.memory_manager.get_context_for_prompt(user_request)
+
+        request_with_context = user_request
+        if mem_context:
+            request_with_context = f"{user_request}\n\n{mem_context}"
+
         prompt = PLANNER_INSTRUCTION.format(
             catalog=self.registry.catalog_for_planner(),
             max_steps=_MAX_PLAN_STEPS,
-            request=user_request,
+            request=request_with_context,
         )
         context = [ChatMessage(role="system", content="You are a precise planner."),
                    ChatMessage(role="user", content=prompt)]

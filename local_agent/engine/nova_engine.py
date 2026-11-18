@@ -21,7 +21,10 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional, Sequence, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from local_agent.memory.manager import MemoryManager
 
 from local_agent.conversation.store import ConversationStore
 from local_agent.engine.system_prompt import SYSTEM_PROMPT, SYSTEM_PROMPT_COMPACT
@@ -99,12 +102,14 @@ class NovaEngine:
         config: Optional[ProviderConfig] = None,
         data_dir: Path = Path("data"),
         compact_prompt: bool = False,
+        memory_manager: Optional[MemoryManager] = None,
     ) -> None:
         # Every dependency is injectable -> replaceable provider, testable engine.
         self.config = config or ProviderConfig(model_name="llama3.2:3b")
         self.provider = provider or OllamaProvider(self.config)
         self.store = store or ConversationStore(Path(data_dir) / "conversations.db")
         self.system_prompt = SYSTEM_PROMPT_COMPACT if compact_prompt else SYSTEM_PROMPT
+        self.memory_manager = memory_manager
 
     # ------------------------------------------------------------------ availability
     def is_ready(self) -> bool:
@@ -122,8 +127,18 @@ class NovaEngine:
 
         # 1. Load context (with limits) and assemble the LLM request
         history = self.store.load_history(conversation_id)
+
+        # Inject relevant persistent memory if available
+        memory_context = ""
+        if self.memory_manager and self.memory_manager.enabled:
+            memory_context = self.memory_manager.get_context_for_prompt(user_message)
+
+        effective_system_prompt = self.system_prompt
+        if memory_context:
+            effective_system_prompt = f"{self.system_prompt}\n\n{memory_context}"
+
         context = ConversationStore.build_context(
-            self.system_prompt, history, user_message
+            effective_system_prompt, history, user_message
         )
 
         # 2. Ask the local model for a STRUCTURED response

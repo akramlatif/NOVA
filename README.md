@@ -108,9 +108,10 @@ Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 | 3 | Task planner, tool registry, and execution orchestrator | **Approved** ✅ |
 | 4 | Browser automation agent, safe download manager, web interaction | **Approved** ✅ |
 | 5 | Desktop automation (mouse/keyboard, window control, approved apps) | **Approved** ✅ |
-| 6 | File and system management agent, document support, system monitor | **Implemented & Tested** 🟢 |
-| 7 | FastAPI backend (localhost-only) | Planned |
-| 8 | React frontend + Tauri desktop shell | Planned |
+| 6 | File and system management agent, document support, system monitor | **Approved** ✅ |
+| 7 | Persistent memory system (SQLite, short/long-term, privacy scrubber) | **Implemented & Tested** 🟢 |
+| 8 | FastAPI backend (localhost-only) | Planned |
+| 9 | React frontend + Tauri desktop shell | Planned |
 
 ## License
 
