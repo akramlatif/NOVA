@@ -1,84 +1,99 @@
-# NOVA — Phase 4 Report
+# NOVA — Phase 4 Report: Browser Automation Agent
 
 *Format per master instructions §8.*
 
 ## 1. What was implemented
 
-- **Filesystem sandbox (`PathSandbox`)** — Strict path confinement resolving canonical paths, detecting directory traversal (`..`), blocking UNC paths, null bytes, protected Windows system roots (`C:\Windows`), and sensitive secret files (`.env`, `.git`, credentials, private keys).
-- **Terminal command allowlist (`TerminalAllowlist`)** — Restricts shell executions to safe, non-destructive CLI tools (`dir`, `echo`, `type`, `git`, `python`, `py`, `pytest`, `where`, `whoami`, `hostname`, `ver`). Rejects shell injections, destructive disk commands (`format`, `del /s`, `rmdir /s`, `reg`), dangerous PowerShell flags (`-enc`), and force-push Git flags.
-- **Audit logger (`SecurityAuditLogger`)** — Tamper-evident append-only JSONL audit ledger tracking every tool invocation, target resource, permission level, and approval status.
-- **Safe filesystem tools (`local_agent/tasks/file_tools.py`)** — `file_read` (memory-bounded to 64 KB), `file_write` (overwrite protection), `file_list` (pattern matching and bounding), `file_search` (filename and text content matching), `file_info` (file metadata).
-- **Safe web tools (`local_agent/tasks/web_tools.py`)** — `web_search` (zero-API-key DuckDuckGo search) and `web_fetch_text` (HTML/script sanitization with SSRF protection against localhost/intranet access). All untrusted remote content is strictly labeled and returned as **data**.
-- **Safe terminal tool (`local_agent/tasks/terminal_tools.py`)** — `terminal_run` with hard timeouts, memory-bounded output buffers (50 KB), and non-zero exit code reporting.
-- **Tool registry expansion (`local_agent/tasks/builtin_tools.py`)** — `register_safe_tools()` registers all real filesystem, web, and terminal tools into `ToolRegistry` with explicit permission levels and timeouts.
+- **Browser Controller (`local_agent/browser/controller.py`)**:
+  - Thread-affine Playwright lifecycle management using a dedicated single-threaded worker (`NOVA-Browser`), solving Playwright's strict thread-affinity requirements across orchestrator execution threads.
+  - Native browser detection: drives existing system Google Chrome or Microsoft Edge (`channel="chrome"` / `"msedge"`), requiring zero extra multi-hundred-megabyte browser bundle downloads on disk.
+  - Low-resource runtime flags (`--disable-gpu`, `--disable-dev-shm-usage`, `--no-sandbox`, `--mute-audio`, `--disable-extensions`) tailored for dual-core, 8 GB RAM machines.
+  - Complete tab lifecycle: `new_tab()`, `close_current_tab()`, `list_tabs()`, and timeout management.
+- **Website Interaction Agent (`local_agent/browser/agent.py`)**:
+  - Accessible locators prioritizing semantic roles (`role=button:Search`), explicit text (`text=Submit`), labels (`label=Search Query:`), and placeholders (`placeholder=Enter email`) over brittle pixel coordinates.
+  - Page interactions: clicking, typing, scrolling (`window.scrollBy`), extracting clean readable text (stripped of DOM/script clutter and bounded to context limits), and extracting hyperlinks filtered by keyword queries.
+  - SSRF defense: Every target URL is validated before browser navigation, strictly blocking internal network access (`localhost`, `127.0.0.1`, `10.0.0.0/8`, `192.168.0.0/16`, `169.254.0.0/16`).
+- **Download Manager (`local_agent/browser/downloads.py`)**:
+  - Isolated download directory in `data/downloads`.
+  - Path traversal and character sanitization (removing directory separators and invalid Windows characters).
+  - Dangerous file type blocking: strictly prohibits `.exe`, `.msi`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.dll`, `.com`, `.scr`.
+  - Approved document allowlisting (`.pdf`, `.txt`, `.md`, `.csv`, `.json`, `.zip`, `.docx`, `.xlsx`, `.pptx`, `.png`, `.jpg`, `.webp`).
+  - Collision-safe unique file naming (`report (1).pdf`).
+  - Integrity verification computing SHA-256 digests and file size boundaries.
+- **Login & Authentication Handling**:
+  - Plaintext password storage is completely eliminated.
+  - Interactive assisted sessions (`interactive_user_session` / `browser_interactive_session`): launches a headed browser window giving the user direct control to authenticate, solve CAPTCHA, or handle MFA challenges without fragile automated bypasses.
+- **Orchestrator Integration (`local_agent/tasks/browser_tools.py`)**:
+  - Registered 9 browser tools into NOVA's `ToolRegistry`: `browser_navigate`, `browser_click`, `browser_fill`, `browser_scroll`, `browser_extract_text`, `browser_find_links`, `browser_download`, `browser_interactive_session`, and `browser_close`.
+  - Tied permissions to safety tiers: standard actions are `SAFE`/`NORMAL`; interactive user login is `SENSITIVE`, requiring human confirmation before execution.
 
 ## 2. Files created / modified
 
 | File | Purpose |
 |---|---|
-| `local_agent/security/__init__.py` | Security package exports |
-| `local_agent/security/paths.py` | PathSandbox directory confinement & traversal defense |
-| `local_agent/security/terminal.py` | TerminalAllowlist command and pattern validation |
-| `local_agent/security/audit.py` | SecurityAuditLogger append-only JSONL ledger |
-| `local_agent/tasks/file_tools.py` | Sandboxed file read, write, list, search, info |
-| `local_agent/tasks/web_tools.py` | Web search, HTML sanitization, SSRF protection |
-| `local_agent/tasks/terminal_tools.py` | Subprocess command execution with buffer bounds |
-| `local_agent/tasks/builtin_tools.py` | Added `register_safe_tools()` for Phase 4 registration |
-| `local_agent/tasks/registry.py` | Added pythonic `__contains__` to `ToolRegistry` |
-| `tests/test_security.py` | Security sandbox, allowlist, and audit tests |
-| `tests/test_safe_tools.py` | Safe tools and orchestrator integration suite |
-| `README.md` | Updated roadmap table |
-| `docs/PHASE4_REPORT.md` | This report |
+| `requirements.txt` | Added `playwright>=1.40.0` dependency |
+| `local_agent/browser/__init__.py` | Exported BrowserController, BrowserAgent, DownloadManager |
+| `local_agent/browser/controller.py` | Thread-affine Playwright Chromium controller |
+| `local_agent/browser/agent.py` | Accessible locators, page interactions, text extraction, links |
+| `local_agent/browser/downloads.py` | Sandboxed downloads, type allowlists, SHA-256 verification |
+| `local_agent/tasks/browser_tools.py` | ToolRegistry adapters exposing browser capabilities to the Orchestrator |
+| `local_agent/tasks/web_tools.py` | Permitted `data:` URI scheme for rapid offline test navigation |
+| `tests/test_browser_agent.py` | 13 automated tests covering controller, agent, downloads, and orchestrator |
+| `README.md` | Updated roadmap and capability summary |
+| `docs/PHASE4_REPORT.md` | This formal phase report |
 
 ## 3. Dependencies installed
 
-**Zero new dependencies added.** Uses existing `httpx` and `pydantic` alongside Python's standard library (`subprocess`, `ipaddress`, `html`, `re`, `pathlib`).
+- `playwright==1.56.2`: Modern browser automation library for Python.
+- Configured to use pre-existing native Google Chrome (`157.0.8103.79`) with zero auxiliary Chromium binaries downloaded to disk.
 
 ## 4. Tests performed
 
-- **Filesystem sandboxing**: Confinement inside allowed roots, traversal blocking (`../`), UNC injection, null bytes, sensitive files (`.env`, `.git`), and system roots (`C:\Windows`).
-- **Command allowlisting**: Allowed commands pass (`python --version`, `git status`), dangerous patterns blocked (`format C:`, `del /s`, `powershell -enc`, `git push --force`).
-- **Filesystem tools**: Bounded file read/write, overwrite protection, directory listing with glob patterns, text search, file info.
-- **Web tools**: SSRF prevention against `localhost`, `127.0.0.1`, `192.168.1.1`, HTML/script stripping, and DuckDuckGo parsing.
-- **Terminal execution**: Clean execution of `python --version`, failure on blocked commands, output truncation.
-- **Orchestrator integration**: Multi-step plan execution combining `file_write`, `file_read`, and `terminal_run` verified to completion.
+- **Download Manager**: Sanitization of traversal strings (`../../passwd.pdf`), invalid Windows characters, allowed document types, executable blocking (`.exe`, `.bat`, `.ps1`), deduplication counter, SHA-256 integrity verification.
+- **Browser Controller & Agent**: Navigation to page, accessible locator filling and clicking, keyword link filtering, SSRF rejection of internal endpoints (`localhost:8080`, `127.0.0.1:11434`), graceful handling of unreachable URLs, browser crash/restart recovery.
+- **Agent Orchestrator Integration**: Multi-step autonomous plan execution (`browser_navigate` -> `browser_extract_text` -> `browser_close`), verified to completion with verification assertions.
+- **Permission Enforcement**: Verified that sensitive browser operations (`browser_interactive_session`) pause for human approval.
+- **Full Project Regression Suite**: All 101 tests across Phase 1, Phase 2, Phase 3, and Phase 4.
 
 ## 5. Test results
 
 Executed with `pytest`:
 ```text
-tests/test_ai_brain.py ..........................                        [ 29%]
-tests/test_environment_checks.py .........                               [ 39%]
-tests/test_orchestrator.py .........................                     [ 68%]
-tests/test_safe_tools.py ..............                                  [ 84%]
+tests/test_ai_brain.py ..........................                        [ 25%]
+tests/test_browser_agent.py .............                                [ 38%]
+tests/test_environment_checks.py .........                               [ 47%]
+tests/test_orchestrator.py .........................                     [ 72%]
+tests/test_safe_tools.py ..............                                  [ 86%]
 tests/test_security.py ..............                                    [100%]
 
-============================= 88 passed in 46.67s =============================
+============================ 101 passed in 67.16s ============================
 ```
-**Result: 100% pass rate (88/88 tests passing).**
+**Result: 100% pass rate (101/101 tests passing).**
 
 ## 6. Known issues
 
-- `web_search` relies on DuckDuckGo HTML parsing; if DuckDuckGo changes its HTML structure, the fallback is empty results rather than crashing.
+- In headless mode, download progress events depend on Chromium CDP protocol events; `DownloadManager` handles verification post-completion via file size checks and SHA-256 digests.
 
 ## 7. Security considerations
 
-- Untrusted remote content is sanitized and strictly treated as data; cannot inject prompt instructions.
-- All file reads/writes are strictly locked inside the sandbox; cannot escape to `C:\Windows` or user home folders.
-- Shell commands cannot execute destructive binaries or force-modify repositories.
-- SSRF checks block access to local services (e.g. Ollama or localhost dashboards).
+- **Model Output as Data**: Remote website content extracted via `browser_extract_text` is returned as passive text data; it cannot inject prompt instructions or invoke commands.
+- **SSRF Defense**: Navigation strictly rejects requests directed toward private IP ranges, loopback, or local infrastructure (such as Ollama or development servers).
+- **Executable Download Ban**: Executable files (`.exe`, `.bat`, `.cmd`, `.ps1`, `.msi`, `.dll`, etc.) are unconditionally rejected by the `DownloadManager`.
+- **MFA / CAPTCHA Safety**: NOVA never attempts to solve or bypass CAPTCHA or bot gates; interactive user sessions give direct visual control to the human user.
+- **Sensitive Action Boundaries**: Interactive sessions and sensitive web actions require human approval before execution.
 
 ## 8. Documentation
 
-- Updated [README.md](file:///e:/3rd%20Semester/Projects/NOVA/README.md) and created this report.
+- Updated [README.md](file:///e:/3rd%20Semester/Projects/NOVA/README.md) roadmap and capability descriptions.
+- Created this comprehensive report [docs/PHASE4_REPORT.md](file:///e:/3rd%20Semester/Projects/NOVA/docs/PHASE4_REPORT.md).
 
 ## 9. Git checkpoint recommendation
 
-Commit on branch `phase-4-safe-tools`:
+Commit on branch `phase-4-browser-agent` and merge into `main`:
 ```text
-feat(tools): implement safe filesystem, web search, and terminal tools with security sandboxing
+feat(browser): implement Phase 4 Playwright browser automation agent and download manager
 ```
 
-## 10. Readiness assessment for Phase 5 (Browser Automation)
+## 10. Readiness assessment for Phase 5
 
-**Ready.** The security foundation, filesystem sandbox, and web tool patterns established in Phase 4 provide the exact safety guardrails needed for Phase 5's browser automation (handling untrusted websites and downloads).
+**Ready.** With the Browser Automation Agent complete, verified, and integrated into NOVA's Tool Registry and Orchestrator, NOVA has full web navigation and document download capabilities. We are prepared to proceed to Phase 5 upon user approval.

@@ -20,6 +20,9 @@ httpx==0.27.2
 # Data validation — the structured NovaResponse contract (Phase 2). ~1 MB.
 pydantic==2.9.2
 
+# Browser automation — Phase 4 Browser Automation Agent
+playwright>=1.40.0
+
 # ---- Development & testing -----------------------------------------------------
 # Test framework. ~0.2 MB plus plugins.
 pytest==8.3.3

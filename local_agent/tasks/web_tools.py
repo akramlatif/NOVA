@@ -36,8 +36,11 @@ def _validate_safe_url(url_str: str) -> str:
         raise WebToolError("URL cannot be empty.")
 
     parsed = urlparse(url_str.strip())
-    if parsed.scheme.lower() not in ("http", "https"):
-        raise WebToolError(f"Unsupported URL scheme: {parsed.scheme!r}. Only HTTP/HTTPS permitted.")
+    if parsed.scheme.lower() not in ("http", "https", "data"):
+        raise WebToolError(f"Unsupported URL scheme: {parsed.scheme!r}. Only HTTP/HTTPS/data permitted.")
+
+    if parsed.scheme.lower() == "data":
+        return url_str.strip()
 
     hostname = (parsed.hostname or "").strip().lower()
     if not hostname:
