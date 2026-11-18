@@ -23,6 +23,12 @@ pydantic==2.9.2
 # Browser automation — Phase 4 Browser Automation Agent
 playwright>=1.40.0
 
+# Desktop automation — Phase 5 Windows Desktop Automation Agent
+pillow>=10.0.0
+pyautogui>=0.9.54
+pywinauto>=0.6.8
+pywin32>=306
+
 # ---- Development & testing -----------------------------------------------------
 # Test framework. ~0.2 MB plus plugins.
 pytest==8.3.3
