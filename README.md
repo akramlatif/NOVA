@@ -107,8 +107,8 @@ Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 | 2 | Ollama LLM core, local conversation loop, structured responses | **Approved** ✅ |
 | 3 | Task planner, tool registry, and execution orchestrator | **Approved** ✅ |
 | 4 | Browser automation agent, safe download manager, web interaction | **Approved** ✅ |
-| 5 | Desktop automation (mouse/keyboard, window control, approved apps) | **Implemented & Tested** 🟢 |
-| 6 | Memory & persistent state | Planned |
+| 5 | Desktop automation (mouse/keyboard, window control, approved apps) | **Approved** ✅ |
+| 6 | File and system management agent, document support, system monitor | **Implemented & Tested** 🟢 |
 | 7 | FastAPI backend (localhost-only) | Planned |
 | 8 | React frontend + Tauri desktop shell | Planned |
 
