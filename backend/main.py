@@ -9,10 +9,11 @@ import logging
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, status
+from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Request, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from backend.models import (
     HealthResponse,
@@ -31,6 +32,15 @@ from backend.models import (
     ListenRequest,
     WakeWordToggleRequest,
     SettingsResponse,
+    LoginRequest,
+    LoginResponse,
+    RegisterRequest,
+    PairingCodeResponse,
+    PairConfirmRequest,
+    PairConfirmResponse,
+    DeviceModel,
+    RemoteTaskRequest,
+    RemoteTaskResponse,
 )
 from backend.state import state
 
@@ -43,7 +53,36 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Strict CORS: only localhost / 127.0.0.1 / Tauri webviews
+security_bearer = HTTPBearer(auto_error=False)
+
+
+def get_client_ip(request: Request) -> str:
+    return request.client.host if request.client else "127.0.0.1"
+
+
+def check_rate_limit(request: Request):
+    ip = get_client_ip(request)
+    if not state.rate_limiter.is_allowed(ip):
+        state.audit_logger.log("RATE_LIMIT_EXCEEDED", "unknown", ip, False, {"path": request.url.path})
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Please wait a moment.",
+        )
+
+
+def require_auth(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer)) -> Dict[str, Any]:
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authentication credentials",
+        )
+    payload = state.token_manager.verify_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid, expired, or tampered access token",
+        )
+    return payload
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -461,6 +500,189 @@ def update_settings(req: Dict[str, Any]):
         else:
             state.memory_manager.disable()
     return {"status": "updated", "settings": req}
+
+
+# ---------------------------------------------------------------------------
+# 8. Authentication & Accounts (Phase 10)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/register", response_model=LoginResponse)
+def register_user(req: RegisterRequest, request: Request):
+    """Register a new dashboard user account."""
+    check_rate_limit(request)
+    client_ip = get_client_ip(request)
+    if req.username in state.users:
+        state.audit_logger.log("REGISTER_FAILED", req.username, client_ip, False, {"reason": "username_taken"})
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    state.users[req.username] = {
+        "username": req.username,
+        "password_hash": state.password_hasher.hash_password(req.password),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    state.audit_logger.log("REGISTER_SUCCESS", req.username, client_ip, True)
+
+    token = state.token_manager.create_token({"sub": req.username, "role": "user"})
+    return LoginResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=3600,
+        username=req.username,
+    )
+
+
+@app.post("/api/auth/login", response_model=LoginResponse)
+def login_user(req: LoginRequest, request: Request):
+    """Authenticate user credentials and return short-lived access token."""
+    check_rate_limit(request)
+    client_ip = get_client_ip(request)
+    user = state.users.get(req.username)
+    if not user or not state.password_hasher.verify_password(req.password, user["password_hash"]):
+        state.audit_logger.log("LOGIN_FAILED", req.username, client_ip, False)
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    state.audit_logger.log("LOGIN_SUCCESS", req.username, client_ip, True)
+    token = state.token_manager.create_token({"sub": req.username, "role": "user"})
+    return LoginResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=3600,
+        username=req.username,
+    )
+
+
+@app.get("/api/auth/me")
+def get_current_user(user: Dict[str, Any] = Depends(require_auth)):
+    """Fetch current authenticated user profile."""
+    return {"username": user.get("sub"), "role": user.get("role", "user"), "authenticated": True}
+
+
+# ---------------------------------------------------------------------------
+# 9. Device Pairing & Remote Access (Phase 10)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/devices/pair/request", response_model=PairingCodeResponse)
+def request_pairing_code(request: Request):
+    """Generate a temporary 5-minute pairing code on the Windows machine."""
+    check_rate_limit(request)
+    code = state.device_manager.generate_pairing_code(device_name="Windows 11 PC")
+    return PairingCodeResponse(
+        code=code,
+        expires_in_seconds=300,
+        device_name="Windows 11 PC",
+    )
+
+
+@app.post("/api/devices/pair/confirm", response_model=PairConfirmResponse)
+def confirm_pairing(req: PairConfirmRequest, request: Request):
+    """Confirm pairing code from a remote phone/browser dashboard."""
+    check_rate_limit(request)
+    client_ip = get_client_ip(request)
+    result = state.device_manager.confirm_pairing(req.code, client_ip)
+    if not result:
+        raise HTTPException(status_code=400, detail="Invalid, expired, or already used pairing code")
+
+    device_info, token = result
+    return PairConfirmResponse(
+        device_id=device_info["device_id"],
+        device_name=device_info["device_name"],
+        status=device_info["status"],
+        access_token=token,
+    )
+
+
+@app.get("/api/devices", response_model=List[DeviceModel])
+def list_devices():
+    """List paired devices and their live online/offline status."""
+    return state.device_manager.list_devices()
+
+
+@app.post("/api/devices/{device_id}/heartbeat")
+def device_heartbeat(device_id: str):
+    """Record heartbeat ping from a paired agent."""
+    updated = state.device_manager.record_heartbeat(device_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return {"status": "ok", "device_id": device_id, "online": True}
+
+
+@app.post("/api/remote/task", response_model=RemoteTaskResponse)
+def submit_remote_task(req: RemoteTaskRequest, request: Request, bg: BackgroundTasks, user: Dict[str, Any] = Depends(require_auth)):
+    """Forward a remote instruction (e.g. from phone) to the paired Windows PC."""
+    check_rate_limit(request)
+    client_ip = get_client_ip(request)
+    device = state.device_manager.get_device(req.device_id or "local-agent-win11")
+    if not device:
+        raise HTTPException(status_code=404, detail="Paired device not found")
+    if device.get("status") != "online":
+        raise HTTPException(status_code=503, detail="Paired device is currently offline")
+
+    task_id = str(uuid.uuid4())
+    state.active_tasks[task_id] = {
+        "task_id": task_id,
+        "instruction": req.instruction,
+        "status": "queued",
+        "current_step": 0,
+        "total_steps": 0,
+        "steps": [],
+        "result": None,
+        "error": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source": "remote_dashboard",
+        "actor": user.get("sub", "remote_user"),
+    }
+
+    state.audit_logger.log("REMOTE_TASK_DISPATCHED", user.get("sub", "remote"), client_ip, True, {
+        "task_id": task_id,
+        "device_id": device["device_id"],
+        "instruction": req.instruction,
+    })
+
+    if req.auto_execute:
+        bg.add_task(_run_task_background, task_id, req.instruction)
+
+    return RemoteTaskResponse(
+        task_id=task_id,
+        device_id=device["device_id"],
+        instruction=req.instruction,
+        status="queued",
+        dispatched_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 10. WebSocket Event Hub (Phase 10)
+# ---------------------------------------------------------------------------
+
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """Bidirectional WebSocket for live task streaming, heartbeats, and approvals."""
+    await state.ws_hub.connect(websocket, client_id)
+    try:
+        # Welcome message
+        await websocket.send_json({
+            "event": "connected",
+            "data": {"client_id": client_id, "timestamp": datetime.now(timezone.utc).isoformat()}
+        })
+
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+                # Handle client ping/heartbeat
+                if msg.get("action") == "ping":
+                    await websocket.send_json({"event": "pong", "data": {"time": time.time()}})
+                elif msg.get("action") == "heartbeat" and "device_id" in msg:
+                    state.device_manager.record_heartbeat(msg["device_id"])
+                    await websocket.send_json({"event": "heartbeat_ack", "data": {"status": "online"}})
+            except Exception:
+                # Raw text ignore or pass
+                pass
+    except WebSocketDisconnect:
+        state.ws_hub.disconnect(websocket, client_id)
+    except Exception as e:
+        logger.debug(f"WebSocket error for {client_id}: {e}")
+        state.ws_hub.disconnect(websocket, client_id)
 
 
 # ---------------------------------------------------------------------------

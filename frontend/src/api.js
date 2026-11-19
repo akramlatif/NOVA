@@ -4,10 +4,25 @@
 
 const BASE_URL = '/api';
 
+// Retrieve auth token from localStorage if present
+export function getAuthToken() {
+  return localStorage.getItem('nova_auth_token');
+}
+
+export function setAuthToken(token) {
+  if (token) {
+    localStorage.setItem('nova_auth_token', token);
+  } else {
+    localStorage.removeItem('nova_auth_token');
+  }
+}
+
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
+  const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
@@ -25,6 +40,33 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Auth (Phase 10)
+  login: (username, password) =>
+    request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  register: (username, password) =>
+    request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  getMe: () => request('/auth/me'),
+
+  // Device Pairing & Remote Access (Phase 10)
+  requestPairingCode: () => request('/devices/pair/request', { method: 'POST' }),
+  confirmPairing: (code) =>
+    request('/devices/pair/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+  getDevices: () => request('/devices'),
+  sendRemoteTask: (device_id, instruction) =>
+    request('/remote/task', {
+      method: 'POST',
+      body: JSON.stringify({ device_id, instruction, auto_execute: true }),
+    }),
+
   // System & Health
   getHealth: () => request('/health'),
   getSystemStatus: () => request('/system/status'),

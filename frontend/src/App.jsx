@@ -4,6 +4,7 @@ import ChatView from './components/ChatView';
 import TasksView from './components/TasksView';
 import VoiceView from './components/VoiceView';
 import MemoryView from './components/MemoryView';
+import RemoteView from './components/RemoteView';
 import SystemView from './components/SystemView';
 import SettingsView from './components/SettingsView';
 import { api } from './api';
@@ -112,6 +113,7 @@ export default function App() {
         {currentView === 'tasks' && <TasksView onNotify={notify} />}
         {currentView === 'voice' && <VoiceView onNotify={notify} />}
         {currentView === 'memory' && <MemoryView onNotify={notify} />}
+        {currentView === 'remote' && <RemoteView onNotify={notify} />}
         {currentView === 'system' && <SystemView onNotify={notify} />}
         {currentView === 'settings' && <SettingsView onNotify={notify} />}
       </main>

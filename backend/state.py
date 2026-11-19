@@ -18,6 +18,9 @@ from local_agent.tasks.memory_tools import register_memory_tools
 from local_agent.voice.controller import VoiceController
 from local_agent.system.monitor import SystemMonitor
 from local_agent.browser.downloads import DownloadManager
+from backend.auth import TokenManager, PasswordHasher, RateLimiter, AuditLogger, _get_server_secret
+from backend.remote import DeviceManager
+from backend.ws_manager import ws_hub
 
 logger = logging.getLogger("nova.backend.state")
 
@@ -68,6 +71,26 @@ class AppState:
         self.download_dir = os.path.join(self.data_dir, "downloads")
         os.makedirs(self.download_dir, exist_ok=True)
         self.download_manager = DownloadManager(download_dir=self.download_dir)
+
+        # 8. Security, Auth, and Device Pairing
+        self.server_secret = _get_server_secret(self.data_dir)
+        self.token_manager = TokenManager(self.server_secret)
+        self.password_hasher = PasswordHasher()
+        self.rate_limiter = RateLimiter(max_requests=120, window_seconds=60)
+        log_dir = os.path.join(self.data_dir, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        self.audit_logger = AuditLogger(os.path.join(log_dir, "audit.jsonl"))
+        self.device_manager = DeviceManager(self.token_manager, self.audit_logger)
+        self.ws_hub = ws_hub
+
+        # User accounts (default local user seeded for pairing and dashboard login)
+        self.users: Dict[str, Dict[str, Any]] = {
+            "admin": {
+                "username": "admin",
+                "password_hash": self.password_hasher.hash_password("nova1234"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        }
 
         # Active Tasks & Approvals in-memory registry
         self.active_tasks: Dict[str, Dict[str, Any]] = {}

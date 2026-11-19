@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   Power,
   RotateCcw,
+  Globe,
 } from 'lucide-react';
 
 export default function Sidebar({
@@ -31,6 +32,7 @@ export default function Sidebar({
     },
     { id: 'voice', label: 'Voice Controls', icon: Mic },
     { id: 'memory', label: 'Memory System', icon: Database },
+    { id: 'remote', label: 'Remote Access', icon: Globe },
     { id: 'system', label: 'System & Downloads', icon: Cpu },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
