@@ -4,7 +4,7 @@ NOVA is a **local-first** personal AI assistant for Windows 11 that understands
 natural-language instructions and performs real-world tasks on your computer
 and through a web interface — with explicit permissions and security from day one.
 
-> **Status: Phase 2 — Local AI Brain.**
+> **Status: Phase 8 — Voice Assistant.**
 > NOVA is built phase by phase. Nothing is marked done until it is tested and approved.
 
 ## What NOVA is being built to do (eventually)
@@ -34,10 +34,10 @@ tested, and approved.
 |---|---|---|
 | AI runtime | Ollama | Phase 1–2 |
 | Core language | Python 3.10+ | Phase 1 |
-| Backend | FastAPI | Phase 7 |
-| Frontend | React | Phase 8 |
-| Desktop shell | Tauri | Phase 8 |
-| Database | SQLite | Phase 2 (conversations), Phase 4 (memory) |
+| Backend | FastAPI | Phase 9 |
+| Frontend | React | Phase 10 |
+| Desktop shell | Tauri | Phase 10 |
+| Database | SQLite | Phase 2 (conversations), Phase 7 (memory) |
 
 ## Project structure
 
@@ -109,9 +109,10 @@ Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 | 4 | Browser automation agent, safe download manager, web interaction | **Approved** ✅ |
 | 5 | Desktop automation (mouse/keyboard, window control, approved apps) | **Approved** ✅ |
 | 6 | File and system management agent, document support, system monitor | **Approved** ✅ |
-| 7 | Persistent memory system (SQLite, short/long-term, privacy scrubber) | **Implemented & Tested** 🟢 |
-| 8 | FastAPI backend (localhost-only) | Planned |
-| 9 | React frontend + Tauri desktop shell | Planned |
+| 7 | Persistent memory system (SQLite, short/long-term, privacy scrubber) | **Approved** ✅ |
+| 8 | Voice assistant (SAPI5 TTS, speech recognition, wake-word consent gate) | **Implemented & Tested** 🟢 |
+| 9 | FastAPI backend (localhost-only) | Planned |
+| 10 | React frontend + Tauri desktop shell | Planned |
 
 ## License
 

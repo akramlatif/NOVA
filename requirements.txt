@@ -35,6 +35,10 @@ pypdf>=4.0.0
 python-docx>=1.1.0
 openpyxl>=3.1.0
 
+# Voice Assistant — Phase 8
+pyttsx3>=2.90
+SpeechRecognition>=3.10.0
+
 # ---- Development & testing -----------------------------------------------------
 # Test framework. ~0.2 MB plus plugins.
 pytest==8.3.3
