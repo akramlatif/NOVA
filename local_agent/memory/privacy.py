@@ -21,7 +21,7 @@ class PrivacyScrubber:
         # API Keys & Tokens
         (r"(?i)\b(?:api[_-]?key|apikey|token|secret)\s*[:=]\s*['\"]?([a-zA-Z0-9_\-\.]{12,})['\"]?", "API/Secret Key"),
         (r"\b(?:ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{36,}\b", "GitHub Token"),
-        (r"\bsk-[a-zA-Z0-9]{20,}\b", "OpenAI/LLM Key"),
+        (r"\bsk-[a-zA-Z0-9_\-]{20,}\b", "OpenAI/LLM Key"),
         (r"\bAKIA[0-9A-Z]{16}\b", "AWS Access Key ID"),
         # Passwords
         (r"(?i)\b(?:password|passwd|pwd)\s*[:=]\s*['\"]?([^\s'\"]{6,})['\"]?", "Password"),
