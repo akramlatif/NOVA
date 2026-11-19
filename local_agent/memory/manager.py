@@ -47,6 +47,11 @@ class MemoryManager:
         """Disable memory retrieval and storage for private sessions."""
         self.enabled = False
 
+    def close(self) -> None:
+        """Close the underlying SQLite database connection."""
+        if hasattr(self, "store") and self.store:
+            self.store.close()
+
     # ------------------------------------------------------------------ Long-Term Memory (Store & Recall)
     def remember(
         self,
