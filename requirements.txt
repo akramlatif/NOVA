@@ -39,6 +39,10 @@ openpyxl>=3.1.0
 pyttsx3>=2.90
 SpeechRecognition>=3.10.0
 
+# Backend API & Server — Phase 9
+fastapi>=0.110.0
+uvicorn>=0.28.0
+
 # ---- Development & testing -----------------------------------------------------
 # Test framework. ~0.2 MB plus plugins.
 pytest==8.3.3

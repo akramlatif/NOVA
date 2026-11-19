@@ -4,7 +4,7 @@ NOVA is a **local-first** personal AI assistant for Windows 11 that understands
 natural-language instructions and performs real-world tasks on your computer
 and through a web interface — with explicit permissions and security from day one.
 
-> **Status: Phase 8 — Voice Assistant.**
+> **Status: Phase 9 — Windows Desktop Application.**
 > NOVA is built phase by phase. Nothing is marked done until it is tested and approved.
 
 ## What NOVA is being built to do (eventually)
@@ -110,9 +110,8 @@ Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 | 5 | Desktop automation (mouse/keyboard, window control, approved apps) | **Approved** ✅ |
 | 6 | File and system management agent, document support, system monitor | **Approved** ✅ |
 | 7 | Persistent memory system (SQLite, short/long-term, privacy scrubber) | **Approved** ✅ |
-| 8 | Voice assistant (SAPI5 TTS, speech recognition, wake-word consent gate) | **Implemented & Tested** 🟢 |
-| 9 | FastAPI backend (localhost-only) | Planned |
-| 10 | React frontend + Tauri desktop shell | Planned |
+| 8 | Voice assistant (SAPI5 TTS, speech recognition, wake-word consent gate) | **Approved** ✅ |
+| 9 | Windows desktop application & local backend (React, Tauri, FastAPI) | **Implemented & Tested** 🟢 |
 
 ## License
 
