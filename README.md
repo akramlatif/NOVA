@@ -1,7 +1,7 @@
 # NOVA — Personal AI Computer Assistant
 
 NOVA is a **local-first** personal AI assistant for Windows 11 that understands
-natural-language instructions and performs real-world tasks on your computer
+natural-language instructions and performs real-world tasks on your own computer
 and through a web interface — with explicit permissions and security from day one.
 
 > **Status: Phase 11 — Security, Testing and Optimization.**
