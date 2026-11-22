@@ -5,7 +5,7 @@ natural-language instructions and performs real-world tasks on your computer
 and through a web interface — with explicit permissions and security from day one.
 
 > **Status: Phase 11 — Security, Testing and Optimization.**
-> NOVA is built phase by phase. Nothing is marked done until it is tested and approved.
+> NOVA is built phase by phase. Nothing is marked done until it is test and approved.
 
 ## What NOVA is being built to do (eventually)
 
