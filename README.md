@@ -67,7 +67,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-pytest                                   # run the test suite
+pytest                                   # run the test suites
 python scripts\verify_environment.py    # inspect your machine
 python scripts\verify_ai_brain.py       # Phase 2: live AI brain check (needs Ollama)
 ```
