@@ -10,7 +10,7 @@ and through a web interface — with explicit permissions and security from day 
 ## What NOVA is being built to do (eventually)
 
 Understand natural-language instructions · plan multi-step tasks · open and
-navigate websites · search online · download and organize files · control
+navigate to websites · search online · download and organize files · control
 approved Windows applications · use mouse/keyboard when needed · read and
 create documents · run approved terminal commands · remember preferences ·
 communicate through text and voice · operate through desktop and web interfaces.
