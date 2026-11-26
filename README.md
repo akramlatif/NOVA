@@ -87,7 +87,7 @@ response = engine.chat(conv, "What's on my agenda?")
 
 Details: **[docs/PHASE2_AI_BRAIN.md](docs/PHASE2_AI_BRAIN.md)**
 
-## Security principles (active from Phase 1)
+## Security principles (active Phase 1)
 
 - Explicit permissions for every capability — nothing runs "by default."
 - Filesystem access restricted to approved directories only.
